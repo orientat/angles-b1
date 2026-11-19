@@ -32,7 +32,7 @@ function cards(){
  container.innerHTML=matches.map(l=>`<a class="card" href="#unit/${l.id}"><span class="tag">${l.course} · ${l.unit}</span><strong lang="en">${esc(l.title)}</strong><p>${esc(l.topic)}</p>${done[l.id]?'<span class="done">Repasada</span>':''}</a>`).join('')||'<p>No hay unidades que coincidan con la búsqueda.</p>';
 }
 function quiz(qs,key){
- return `<form class="quiz" data-quiz="${key}">${qs.map(([q,opts],i)=>{const order=opts.map((_,j)=>(j+i+1)%opts.length);return `<fieldset><legend lang="en">${esc(q)}</legend>${order.map(j=>`<label><input type="radio" name="q${i}" value="${j}"> <span lang="en">${esc(opts[j])}</span></label>`).join('')}<p class="feedback" aria-live="polite"></p></fieldset>`}).join('')}<button class="btn" type="submit">Corregir</button><button class="btn secondary" type="reset">Reintentar</button><p class="feedback" role="status"></p></form>`;
+ return `<form class="quiz" data-quiz="${key}">${qs.map(([q,opts,reason],i)=>{const order=opts.map((_,j)=>(j+i+1)%opts.length);return `<fieldset data-answer="${esc(opts[0])}" data-reason="${esc(reason)}"><legend lang="en">${esc(q)}</legend>${order.map(j=>`<label><input type="radio" name="q${i}" value="${j}"> <span lang="en">${esc(opts[j])}</span></label>`).join('')}<p class="feedback" aria-live="polite"></p></fieldset>`}).join('')}<button class="btn" type="submit">Corregir</button><button class="btn secondary" type="reset">Reintentar</button><p class="feedback" role="status"></p></form>`;
 }
 
 function exampleMarkup(sentence) {
@@ -84,15 +84,68 @@ function writing(key,prompt,model){
 function unit(l){
  session.course=l.course;save('course',l.course);save('last',l.id);
  const pages=l.course==='1B1'?`<a href="#quadern/${l.page}">Ver apuntes y modelo en el cuaderno 1B1</a>`:`<a href="quadern/2B1.pdf#page=${l.notebook}" target="_blank" rel="noopener">Ver páginas originales del cuaderno 2B1</a>`;
- return `<a href="#units">Todas las unidades</a><h1 class="study-title" lang="en">${esc(l.title)}</h1><p class="eyebrow">${l.course} · ${l.unit}</p><div class="cols"><section class="panel"><h2>Gramática y uso</h2><h3>${esc(l.topic)}</h3><p>${esc(l.note)}</p><blockquote lang="en">${esc(l.gap.replace('___',l.options[0]))}</blockquote>${grammarGrid(l)}${l.detail?`<details><summary>Más ejemplos del cuaderno</summary><p lang="en">${esc(l.detail)}</p></details>`:''}${l.oral?`<h3>Practica en voz alta</h3><p lang="en">${esc(l.oral)}</p><p>Responde con una idea, una razón y un ejemplo. Reutiliza dos palabras de la unidad.</p><p lang="en">${esc(l.pronunciation)}</p>`:''}${pages}${l.course==='2B1'?`<p class="footnote">English File B1, p. ${l.page} · ${link(bookshelf,'Abrir Oxford')}</p>`:''}</section><section class="panel"><h2>Vocabulario</h2><p class="lead">Pulsa una palabra para oírla en inglés.</p>${wordDeck(l)}<details open><summary>Diccionario de la unidad</summary><div class="vocab">${l.vocab.map(([en,es])=>`<button class="word" data-voice="${esc(en)}"><strong lang="en">${esc(en)}</strong><span>${esc(es)}</span></button>`).join('')}</div></details></section></div><section class="panel"><h2>Practica</h2>${quiz(unitQuestions(l),l.id)}</section><section class="panel"><h2>Writing</h2>${l.course==='1B1'?notebookWriting(l):''}${writing(l.id,l.prompt,l.model)}</section><button class="btn" data-done="${l.id}">${done[l.id]?'Desmarcar unidad':'Marcar como repasada'}</button><p id="status" role="status"></p>`;
+ return `<a href="#units">Todas las unidades</a><h1 class="study-title" lang="en">${esc(l.title)}</h1><p class="eyebrow">${l.course} · ${l.unit}</p>${topicLink(l.id)}<div class="cols"><section class="panel"><h2>Gramática y uso</h2><h3>${esc(l.topic)}</h3><p>${esc(l.note)}</p><blockquote lang="en">${esc(l.gap.replace('___',l.options[0]))}</blockquote>${grammarGrid(l)}${l.detail?`<details><summary>Más ejemplos del cuaderno</summary><p lang="en">${esc(l.detail)}</p></details>`:''}${l.oral?`<h3>Practica en voz alta</h3><p lang="en">${esc(l.oral)}</p><p>Responde con una idea, una razón y un ejemplo. Reutiliza dos palabras de la unidad.</p><p lang="en">${esc(l.pronunciation)}</p>`:''}${pages}${l.course==='2B1'?`<p class="footnote">English File B1, p. ${l.page} · ${link(bookshelf,'Abrir Oxford')}</p>`:''}</section><section class="panel"><h2>Vocabulario</h2><p class="lead">Pulsa una palabra para oírla en inglés.</p>${wordDeck(l)}<details open><summary>Diccionario de la unidad</summary><div class="vocab">${l.vocab.map(([en,es])=>`<button class="word" data-voice="${esc(en)}"><strong lang="en">${esc(en)}</strong><span>${esc(es)}</span></button>`).join('')}</div></details></section></div><section class="panel"><h2>Practica</h2>${quiz(unitQuestions(l),l.id)}</section><section class="panel"><h2>Writing</h2>${l.course==='1B1'?notebookWriting(l):''}${writing(l.id,l.prompt,l.model)}</section><button class="btn" data-done="${l.id}">${done[l.id]?'Desmarcar unidad':'Marcar como repasada'}</button><p id="status" role="status"></p>`;
 }
 function examQs(set,skill){return set[skill].qs.map(([q,a,b,c,note])=>[q,[a,b,c],note])}
+function topicIndex() {
+ return '<section class="panel"><h2>Práctica PUC valenciana por temas</h2><p>Elige una situación de tus unidades. Puedes trabajar cada destreza por separado.</p><div class="grid">'+window.topicPacks.map((pack,i)=>
+  '<a class="card" href="#topic/'+(i+1)+'"><strong lang="en">'+esc(pack.title)+'</strong><span>'+pack.units.map(unitLabel).join(' · ')+'</span></a>'
+ ).join('')+'</div></section>';
+}
+function unitLabel(id) {
+ const lesson=lessons.find(item=>item.id===id);
+ return lesson.course+' '+lesson.unit;
+}
+function topicLink(id) {
+ const i=window.topicPacks.findIndex(pack=>pack.units.includes(id));
+ return i<0?'<a href="#topics">Explorar las pruebas por temas</a>':'<a class="btn" href="#topic/'+(i+1)+'">Practicar este tema · PUC valenciana</a>';
+}
+const topicSkills=['Lectura','Escucha','Escritura','Oral','Mediación escrita','Mediación oral'];
+function topicPage(index,skill){
+ const pack=window.topicPacks[index];
+ const key='topic-'+(index+1)+'-'+skill;
+ const nav='<a href="#topics">Todos los temas</a><h1 lang="en">'+esc(pack.title)+'</h1><p>'+pack.units.map(id=>'<a href="#unit/'+id+'">'+unitLabel(id)+'</a>').join(' · ')+'</p><div class="tabs">'+topicSkills.map((name,i)=>'<a class="btn '+(i===skill?'':'secondary')+'" href="#topic/'+(index+1)+'/'+i+'" '+(i===skill?'aria-current="page"':'')+'>'+name+'</a>').join('')+'</div>';
+ let task='';
+ if(skill===0){
+  const [statement,truth,proof]=pack.tf;
+  const [question,answer,b,c,reason]=pack.mc;
+  const [gap,word,x,y]=pack.gap;
+  task='<blockquote lang="en">'+esc(pack.reading)+'</blockquote>'+quiz([[statement,[truth,truth==='True'?'False':'True'],proof],[question,[answer,b,c],reason],[gap,[word,x,y],gap.replace('___',word)]],key);
+ }else if(skill===1){
+  task='<p>Lee las dos preguntas, escucha el mensaje dos veces y escribe los datos en inglés.</p><audio controls preload="none" aria-label="Mensaje en inglés" src="audio/topic-'+(index+1)+'.mp3"></audio><form data-listen="'+index+'">'+[0,2].map(n=>'<p><label>'+esc(pack.listenQs[n])+' <input required autocomplete="off" name="answer'+n+'"></label></p>').join('')+'<button class="btn">Corregir</button><p role="status"></p></form><details><summary>Transcripción</summary><blockquote lang="en">'+esc(pack.listening)+'</blockquote></details>';
+ }else{
+  const prompts=[pack.tasks[0],pack.tasks[1]+'\n\nInteraction: '+pack.tasks[2],...pack.mediation];
+  const oral=skill===3||skill===5;
+  const criteria=skill>=4?['He elegido los datos que necesita esta persona.','He explicado las condiciones con mis propias palabras.','He comprobado cifras, horarios y excepciones.']:oral?['He dado una razón y un ejemplo concreto.','He respondido a la propuesta de mi compañero.','Hemos llegado a un acuerdo.']:['He contestado a cada punto del mensaje.','He elegido un saludo y un cierre apropiados.','He revisado los tiempos verbales y los conectores.'];
+  task=(skill>=4?'<h3>Documento de partida</h3><blockquote>'+esc(pack.notice)+'</blockquote>':'')+'<p lang="en" style="white-space:pre-line">'+esc(prompts[skill-2])+'</p><label for="draft">'+(oral?'Notas para hablar':'Tu respuesta en inglés')+'</label><textarea id="draft" lang="en" data-draft="'+key+'">'+esc(drafts[key]||'')+'</textarea><p id="wordcount"></p>'+(oral?'<button class="btn" data-timer="90">Practicar durante 90 s</button> <strong id="timer" role="status">1:30</strong>':'')+'<details><summary>Autoevaluación</summary>'+criteria.map((criterion,n)=>'<label style="display:block"><input type="checkbox" data-review="'+key+'-'+n+'" '+(get('review-'+key+'-'+n,false)?'checked':'')+'> '+esc(criterion)+'</label>').join('')+'</details>';
+ }
+ if(skill===4) task+='<details><summary>Comparar con una respuesta posible</summary><blockquote lang="en">'+esc(pack.example)+'</blockquote></details>';
+ return nav+'<section class="panel"><h2>'+topicSkills[skill]+'</h2>'+task+'</section><p id="status" role="status"></p>';
+}
+function topicScoreName(key){
+ const [,n,skill]=key.split('-');
+ return window.topicPacks[Number(n)-1].title+' · '+topicSkills[Number(skill)];
+}
+function correctListening(form){
+ const i=Number(form.dataset.listen),pack=window.topicPacks[i],answers=new FormData(form);
+ const normal=s=>s.trim().toLowerCase().replace(/[.!?]+$/,'').replace(/^(the|a|an) /,'').replace(/\s+/g,' ');
+ let correct=0;
+ const notes=[0,2].map((n,k)=>{
+  const allowed=pack.listenQs[n+1].split(' / ');
+  const ok=allowed.some(a=>normal(a)===normal(String(answers.get('answer'+n))));
+  correct+=Number(ok);
+  return (k+1)+'. '+(ok?'Correcto':'Solución: '+allowed[0]);
+ });
+ scores['topic-'+(i+1)+'-1']={correct,total:2};save('scores',scores);
+ form.querySelector('[role=status]').textContent=correct+'/2. '+notes.join(' · ');
+}
+
 function exam(){
  const set=sets[session.exam], skill=session.skill, task=set[skill], objective=skill==='reading'||skill==='listening';
- return `<h1 class="study-title">Práctica EOI B1</h1><p class="lead">Cinco simulacros de práctica con tareas originales de nivel B1. Cada uno incluye dos tareas de lectura, dos de escucha, escritura, expresión e interacción oral y mediación. La web corrige la comprensión. Para las respuestas abiertas puedes comparar tu propuesta con un modelo.</p><div class="tabs" aria-label="Simulacro">${sets.map((s,i)=>tab('exam',s.title,i,i===session.exam)).join('')}</div><div class="tabs" aria-label="Destreza">${Object.entries(skills).map(([k,t])=>tab('skill',t,k,k===skill)).join('')}</div><section class="panel"><h2>${skills[skill]}</h2>${skill==='reading'?`<blockquote lang="en">${esc(task.text)}</blockquote>`:''}${skill==='reading'?`<h3>Segunda tarea · Relaciona</h3><p>Lee los tres anuncios y elige el más adecuado para cada persona en las tres últimas preguntas.</p>${task.notices.map(n=>'<blockquote lang="en">'+esc(n)+'</blockquote>').join('')}`:''}${skill==='listening'?examAudio(session.exam,task):''}${objective?quiz(examQs(set,skill),'exam-'+session.exam+'-'+skill):skill==='speaking'?`<p lang="en" style="white-space:pre-line">${esc(task.prompt)}</p><div class="actions"><button class="btn" data-timer="90">Empezar 90 s de práctica</button><button class="btn secondary" data-timer-stop>Parar</button><strong id="timer" role="status">1:30</strong></div><details><summary>Guía de respuesta</summary><blockquote lang="en">${esc(task.model)}</blockquote><p>Da razones y ejemplos, y en la interacción reacciona a lo que diga tu compañero.</p></details>`:writing('exam-'+session.exam+'-'+skill,task.prompt,task.model)}</section><div class="panel"><h3>Cómo se han preparado las tareas</h3><p>La muestra de certificación de Cataluña orienta la práctica de comprensión. El modelo de Navarra sirve de referencia para seleccionar información y explicársela a otra persona. Los textos, audios sintéticos y preguntas de esta web son de entrenamiento. Las notas expresan aciertos de práctica.</p><div class="actions">${link(official,'Generalitat Valenciana · PUC')}${link('https://repositori.educacio.gencat.cat/handle/20.500.12694/1436','Generalitat de Catalunya · muestra oficial B1')}${link('https://www.educacion.navarra.es/documents/27590/2697239/ING_B1_MO_MODELO.pdf/0f7b329a-91cb-c0f0-bcd7-6c191ee0e75e','Navarra · modelo de mediación oral B1')}${link('https://sede.gva.es/es/detall-tramit?id_proc=G17070','Información para alumnado oficial')}</div></div><p id="status" role="status"></p>`;
+ return `<h1 class="study-title">Práctica EOI B1</h1><a class="btn" href="#topics">Pruebas por temas de las unidades · GVA</a><h2>Cinco simulacros generales</h2><p class="lead">Cinco simulacros de práctica con tareas originales de nivel B1. Cada uno incluye dos tareas de lectura, dos de escucha, escritura, expresión e interacción oral y mediación. La web corrige la comprensión. Para las respuestas abiertas puedes comparar tu propuesta con un modelo.</p><div class="tabs" aria-label="Simulacro">${sets.map((s,i)=>tab('exam',s.title,i,i===session.exam)).join('')}</div><div class="tabs" aria-label="Destreza">${Object.entries(skills).map(([k,t])=>tab('skill',t,k,k===skill)).join('')}</div><section class="panel"><h2>${skills[skill]}</h2>${skill==='reading'?`<blockquote lang="en">${esc(task.text)}</blockquote>`:''}${skill==='reading'?`<h3>Segunda tarea · Relaciona</h3><p>Lee los tres anuncios y elige el más adecuado para cada persona en las tres últimas preguntas.</p>${task.notices.map(n=>'<blockquote lang="en">'+esc(n)+'</blockquote>').join('')}`:''}${skill==='listening'?examAudio(session.exam,task):''}${objective?quiz(examQs(set,skill),'exam-'+session.exam+'-'+skill):skill==='speaking'?`<p lang="en" style="white-space:pre-line">${esc(task.prompt)}</p><div class="actions"><button class="btn" data-timer="90">Empezar 90 s de práctica</button><button class="btn secondary" data-timer-stop>Parar</button><strong id="timer" role="status">1:30</strong></div><details><summary>Guía de respuesta</summary><blockquote lang="en">${esc(task.model)}</blockquote><p>Da razones y ejemplos, y en la interacción reacciona a lo que diga tu compañero.</p></details>`:writing('exam-'+session.exam+'-'+skill,task.prompt,task.model)}</section><div class="panel"><h3>Cómo se han preparado las tareas</h3><p>El banco por temas sigue tipos de tarea descritos para B1 en la guía valenciana de la PUC de 2026. Los cinco simulacros generales ofrecen práctica adicional. Son ejercicios originales y las puntuaciones corresponden a las actividades de esta web.</p><div class="actions">${link(official,'Generalitat Valenciana · pruebas y guías')}${link('https://www.grammazzle.com/test/b1/cv/2020/CTO.pdf','Prueba valenciana de escucha B1 de 2019–2020 con soluciones · copia en Grammazzle')}${link('https://sede.gva.es/es/detall-tramit?id_proc=G22302','GVA · certificación de inglés B1')}</div></div><p id="status" role="status"></p>`;
 }
 function progress(){
- return `<h1 class="study-title">Tu progreso</h1><p class="lead">El progreso, las puntuaciones y los borradores se guardan en este navegador.</p><div class="grid">${['1B1','2B1'].map(c=>{const all=lessons.filter(l=>l.course===c), reviewed=all.filter(l=>done[l.id]);return `<section class="panel"><h2>${c}</h2><p>${reviewed.length} de ${all.length} unidades repasadas</p><progress class="progress" aria-label="Unidades repasadas de ${c}" value="${reviewed.length}" max="${all.length}"></progress></section>`}).join('')}</div><section class="panel"><h2>Últimas puntuaciones por actividad</h2>${Object.keys(scores).length?`<ul>${Object.entries(scores).reverse().map(([k,s])=>{const l=lessons.find(l=>l.id===k);const [,n,skill]=k.split('-');return `<li>${esc(l?l.course+' · '+l.title:sets[n]?.title+' · '+skills[skill])} — ${Number(s.correct)}/${Number(s.total)}</li>`}).join('')}</ul>`:'<p>Completa una actividad autocorrectiva para ver tu resultado.</p>'}</section>`;
+ return `<h1 class="study-title">Tu progreso</h1><p class="lead">El progreso, las puntuaciones y los borradores se guardan en este navegador.</p><div class="grid">${['1B1','2B1'].map(c=>{const all=lessons.filter(l=>l.course===c), reviewed=all.filter(l=>done[l.id]);return `<section class="panel"><h2>${c}</h2><p>${reviewed.length} de ${all.length} unidades repasadas</p><progress class="progress" aria-label="Unidades repasadas de ${c}" value="${reviewed.length}" max="${all.length}"></progress></section>`}).join('')}</div><section class="panel"><h2>Últimas puntuaciones por actividad</h2>${Object.keys(scores).length?`<ul>${Object.entries(scores).reverse().map(([k,s])=>{const l=lessons.find(l=>l.id===k);const [,n,skill]=k.split('-');return `<li>${esc(k.startsWith('topic-')?topicScoreName(k):l?l.course+' · '+l.title:sets[n]?.title+' · '+skills[skill])} — ${Number(s.correct)}/${Number(s.total)}</li>`}).join('')}</ul>`:'<p>Completa una actividad autocorrectiva para ver tu resultado.</p>'}</section>`;
 }
 function notebook(page){
  const p=Math.max(1,Math.min(110,Number(page)||1));
@@ -105,9 +158,9 @@ function updateCount(){
 }
 function render(){
  stopTimer();if('speechSynthesis' in window)speechSynthesis.cancel();
- const [route,id]=location.hash.slice(1).split('/');
+ const [route,id,section]=location.hash.slice(1).split('/');
  const lesson=route==='unit'&&lessons.find(l=>l.id===id);
- app.innerHTML=lesson?unit(lesson):route==='exam'?exam():route==='progres'?progress():route==='quadern'?notebook(id):main();
+ app.innerHTML=route==='topics'?topicIndex():route==='topic'&&window.topicPacks[Number(id)-1]?topicPage(Number(id)-1,topicSkills[Number(section)]?Number(section):0):lesson?unit(lesson):route==='exam'?exam():route==='progres'?progress():route==='quadern'?notebook(id):main();
  cards();updateCount();
  document.querySelectorAll('nav a').forEach(a=>{const curr=route==='exam'?'#exam':route==='progres'?'#progres':'#inici';a.toggleAttribute('aria-current',a.hash===curr)});
  if(route==='units')requestAnimationFrame(()=>document.querySelector('#units')?.scrollIntoView());
@@ -118,7 +171,7 @@ app.addEventListener('input',e=>{
  if(e.target.id==='search'){session.search=e.target.value;cards()}
  if(e.target.dataset.draft){drafts[e.target.dataset.draft]=e.target.value;const saved=save('drafts',drafts);updateCount();if(!saved)status('El borrador no se ha podido guardar en este navegador.')}
 });
-app.addEventListener('change',e=>{if(e.target.id==='page'&&e.target.checkValidity())location.hash='quadern/'+e.target.value});
+app.addEventListener('change',e=>{if(e.target.dataset.review)save('review-'+e.target.dataset.review,e.target.checked);if(e.target.id==='page'&&e.target.checkValidity())location.hash='quadern/'+e.target.value});
 app.addEventListener('click',e=>{
  const b=e.target.closest('button');if(!b)return;const d=b.dataset;
  if(d.course){session.course=d.course;save('course',d.course);document.querySelectorAll('[data-course]').forEach(el=>el.setAttribute('aria-pressed',el===b));cards()}
@@ -132,16 +185,16 @@ app.addEventListener('click',e=>{
 });
 app.addEventListener('reset',e=>{e.target.querySelectorAll('.feedback').forEach(x=>x.textContent='')});
 app.addEventListener('submit',e=>{
- const f=e.target;if(!f.matches('.quiz'))return;e.preventDefault();
- const key=f.dataset.quiz, l=lessons.find(x=>x.id===key), qs=l?unitQuestions(l):examQs(sets[session.exam],session.skill), data=new FormData(f);
+ const f=e.target;if(f.hasAttribute('data-listen')){e.preventDefault();correctListening(f);return}if(!f.matches('.quiz'))return;e.preventDefault();
+ const key=f.dataset.quiz, data=new FormData(f);
  const result=f.querySelector('[role=status]');
- if(qs.some((_,i)=>!data.has('q'+i))){result.textContent='Responde a todas las preguntas antes de corregir.';return}
+ if(Array.from(f.querySelectorAll('fieldset')).some((_,i)=>!data.has('q'+i))){result.textContent='Responde a todas las preguntas antes de corregir.';return}
  let correct=0;
  f.querySelectorAll('fieldset').forEach((field,i)=>{
  const ok=data.get('q'+i)==='0';correct+=Number(ok);
- field.querySelector('.feedback').textContent=(ok?'Correcto. ':'Respuesta correcta: '+qs[i][1][0]+'. ')+qs[i][2];
+ field.querySelector('.feedback').textContent=(ok?'Correcto. ':'Respuesta correcta: '+field.dataset.answer+'. ')+field.dataset.reason;
  });
- scores[key]={correct,total:qs.length};const saved=save('scores',scores);
- result.textContent=`${correct} de ${qs.length} respuestas correctas.${saved?'':' La puntuación no se ha podido guardar.'}`;
+ scores[key]={correct,total:f.querySelectorAll('fieldset').length};const saved=save('scores',scores);
+ result.textContent=`${correct} de ${scores[key].total} respuestas correctas.${saved?'':' La puntuación no se ha podido guardar.'}`;
 });
 render();
